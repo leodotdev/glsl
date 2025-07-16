@@ -5,11 +5,18 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>3D ASCII Shader Viewer</title>
     <style>
+        @font-face {
+            font-family: 'PPSupplyMono';
+            src: url('./fonts/PPSupplyMono-Regular.otf') format('opentype');
+            font-weight: normal;
+            font-style: normal;
+        }
+        
         body {
             margin: 0;
-            font-family: monospace;
+            font-family: 'PPSupplyMono', monospace;
             background: #000;
-            color: #0f0;
+            color: #fafafa;
             overflow: hidden;
         }
         #canvas {
@@ -21,8 +28,9 @@
             left: 20px;
             background: rgba(0, 0, 0, 0.8);
             padding: 20px;
-            border: 1px solid #0f0;
+            border: 1px solid #fafafa;
             border-radius: 5px;
+            font-family: 'PPSupplyMono', monospace;
         }
         #file-input {
             margin-bottom: 10px;
@@ -48,6 +56,47 @@
             transform: translate(-50%, -50%);
             font-size: 24px;
             display: none;
+            font-family: 'PPSupplyMono', monospace;
+        }
+        #model-picker {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 120px;
+            background: rgba(0, 0, 0, 0.9);
+            border-top: 1px solid #fafafa;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 10px;
+            overflow-x: auto;
+            gap: 20px;
+        }
+        .model-thumb {
+            width: 80px;
+            height: 80px;
+            border: 2px solid #fafafa;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'PPSupplyMono', monospace;
+            font-size: 12px;
+            text-align: center;
+            padding: 5px;
+            background: rgba(250, 250, 250, 0.1);
+        }
+        .model-thumb:hover {
+            border-color: #fafafa;
+            background: rgba(250, 250, 250, 0.2);
+            transform: scale(1.05);
+        }
+        .model-thumb.active {
+            border-color: #fafafa;
+            background: rgba(250, 250, 250, 0.3);
         }
     </style>
 </head>
@@ -56,12 +105,12 @@
     <div id="controls">
         <input type="file" id="file-input" accept=".gltf,.glb,.obj">
         <label>
-            Character Size: <span id="char-size-value">8</span>
-            <input type="range" id="char-size" min="4" max="20" value="8" step="1">
+            Character Size: <span id="char-size-value">10</span>
+            <input type="range" id="char-size" min="6" max="24" value="10" step="1">
         </label>
         <label>
-            Brightness: <span id="brightness-value">1.0</span>
-            <input type="range" id="brightness" min="0.1" max="2.0" value="1.0" step="0.1">
+            Brightness: <span id="brightness-value">1.5</span>
+            <input type="range" id="brightness" min="0.1" max="2.0" value="1.5" step="0.1">
         </label>
         <label>
             Contrast: <span id="contrast-value">1.0</span>
@@ -70,13 +119,532 @@
         <label>
             <input type="checkbox" id="auto-rotate" checked> Auto Rotate
         </label>
+        <label>
+            Rotation X: <span id="rotation-x-value">0</span>°
+            <input type="range" id="rotation-x" min="0" max="360" value="0" step="1">
+        </label>
+        <label>
+            Rotation Y: <span id="rotation-y-value">0</span>°
+            <input type="range" id="rotation-y" min="0" max="360" value="0" step="1">
+        </label>
+        <label>
+            Rotation Z: <span id="rotation-z-value">0</span>°
+            <input type="range" id="rotation-z" min="0" max="360" value="0" step="1">
+        </label>
     </div>
     <div id="loading">Loading...</div>
+    <div id="model-picker">
+        <div class="model-thumb" data-model="3d/book.glb">book</div>
+        <div class="model-thumb" data-model="3d/book2.glb">book2</div>
+        <div class="model-thumb" data-model="3d/cap.glb">cap</div>
+        <div class="model-thumb" data-model="3d/cap2.glb">cap2</div>
+        <div class="model-thumb" data-model="3d/cat.glb">cat</div>
+        <div class="model-thumb" data-model="3d/cat2.glb">cat2</div>
+        <div class="model-thumb" data-model="3d/dog.glb">dog</div>
+        <div class="model-thumb" data-model="3d/dog2.glb">dog2</div>
+        <div class="model-thumb" data-model="3d/phone.glb">phone</div>
+    </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/three@0.149.0/build/three.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.149.0/examples/js/loaders/GLTFLoader.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.149.0/examples/js/loaders/OBJLoader.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.149.0/examples/js/controls/OrbitControls.js"></script>
-    <script src="app-standalone.js"></script>
+    <script async src="https://unpkg.com/es-module-shims@1.6.3/dist/es-module-shims.js"></script>
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://unpkg.com/three@0.149.0/build/three.module.js",
+            "three/addons/": "https://unpkg.com/three@0.149.0/examples/jsm/"
+        }
+    }
+    </script>
+    <script type="module">
+        import * as THREE from 'three';
+        import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+        import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+        let scene, camera, renderer;
+        let model, controls;
+        let asciiPass;
+        let autoRotate = true;
+        let fontLoaded = false;
+
+        // Use mostly special characters, minimal letters
+        // Ordered approximately from lightest to darkest
+        let fullAsciiSet = " `'.·:;,_-~^\"!|/\\()[]{}+<>=*?¿•○●#$%&@";
+        
+        // Add more symbols and punctuation
+        fullAsciiSet += "¡¦†‡§¶¤¢£¥™®©÷×±¬";
+        
+        // Add only select letters that work well in ASCII art (avoid most alphabet)
+        fullAsciiSet += "ilI7TYJj1089";
+
+        let asciiTexture = null;
+
+        // Wait for font to load
+        document.fonts.ready.then(() => {
+            fontLoaded = true;
+            init();
+        });
+
+        // Create ASCII texture atlas
+        function createAsciiTexture(charSet = fullAsciiSet) {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            
+            const charSize = 32;
+            const cols = 16;
+            const rows = Math.ceil(charSet.length / cols);
+            
+            canvas.width = charSize * cols;
+            canvas.height = charSize * rows;
+            
+            ctx.fillStyle = '#000';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            ctx.font = `${charSize * 0.8}px PPSupplyMono`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillStyle = '#fff';
+            
+            for (let i = 0; i < charSet.length; i++) {
+                const x = (i % cols) * charSize + charSize / 2;
+                const y = Math.floor(i / cols) * charSize + charSize / 2;
+                ctx.fillText(charSet[i], x, y);
+            }
+            
+            const texture = new THREE.CanvasTexture(canvas);
+            texture.magFilter = THREE.NearestFilter;
+            texture.minFilter = THREE.NearestFilter;
+            
+            return texture;
+        }
+
+        // Initialize Three.js scene
+        function init() {
+            if (!fontLoaded) return;
+            
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x000000);
+
+            // Camera setup
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(0, 0, 5);
+
+            // Renderer setup
+            renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('canvas'), antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+
+            // Lighting
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+            scene.add(ambientLight);
+
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.5);
+            directionalLight.position.set(5, 5, 5);
+            scene.add(directionalLight);
+
+            // Controls
+            controls = new OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+
+            // Create ASCII texture
+            asciiTexture = createAsciiTexture(fullAsciiSet);
+
+            // Create ASCII post-processing effect
+            createAsciiEffect();
+
+            // Add default geometry
+            addDefaultGeometry();
+
+            // Event listeners
+            setupEventListeners();
+
+            // Start animation loop
+            animate();
+        }
+
+        // Create ASCII shader effect
+        function createAsciiEffect() {
+            // ASCII vertex shader
+            const vertexShader = `
+                varying vec2 vUv;
+                void main() {
+                    vUv = uv;
+                    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+                }
+            `;
+
+            // ASCII fragment shader
+            const fragmentShader = `
+                uniform sampler2D tDiffuse;
+                uniform sampler2D tAscii;
+                uniform vec2 resolution;
+                uniform float charSize;
+                uniform float brightness;
+                uniform float contrast;
+                uniform float numChars;
+                uniform float atlasSize;
+                varying vec2 vUv;
+
+                float gray(vec3 color) {
+                    return dot(color, vec3(0.299, 0.587, 0.114));
+                }
+
+                void main() {
+                    vec2 cellSize = vec2(charSize) / resolution;
+                    vec2 cellPos = floor(vUv / cellSize);
+                    vec2 cellUv = cellPos * cellSize + cellSize * 0.5;
+                    
+                    vec4 sceneColor = texture2D(tDiffuse, cellUv);
+                    vec3 color = sceneColor.rgb;
+                    float alpha = sceneColor.a;
+                    
+                    // Check if this pixel is background (black)
+                    float isBackground = step(length(color), 0.01);
+                    
+                    if (isBackground > 0.5) {
+                        // Transparent background
+                        gl_FragColor = vec4(0.0, 0.0, 0.0, 0.0);
+                        return;
+                    }
+                    
+                    float grayValue = gray(color);
+                    
+                    // Apply brightness and contrast
+                    grayValue = (grayValue - 0.5) * contrast + 0.5;
+                    grayValue = grayValue * brightness;
+                    grayValue = clamp(grayValue, 0.0, 1.0);
+                    
+                    // Map to ASCII character index
+                    float charIndex = floor(grayValue * (numChars - 1.0) + 0.5);
+                    
+                    // Calculate position in atlas
+                    float cols = 16.0;
+                    float rows = ceil(numChars / cols);
+                    vec2 atlasUv = vec2(
+                        mod(charIndex, cols) / cols,
+                        floor(charIndex / cols) / rows
+                    );
+                    
+                    // Sample character from atlas with proper UV mapping
+                    vec2 inCellUv = mod(vUv * resolution / charSize, 1.0);
+                    vec2 charUv = atlasUv + inCellUv / vec2(cols, rows);
+                    
+                    vec4 asciiChar = texture2D(tAscii, charUv);
+                    
+                    // Output
+                    vec3 finalColor = vec3(asciiChar.r) * 0.98;
+                    gl_FragColor = vec4(finalColor, alpha);
+                }
+            `;
+
+            // Create custom pass
+            asciiPass = {
+                uniforms: {
+                    tDiffuse: { value: null },
+                    tAscii: { value: asciiTexture },
+                    resolution: { value: new THREE.Vector2(window.innerWidth, window.innerHeight) },
+                    charSize: { value: 10.0 },
+                    brightness: { value: 1.5 },
+                    contrast: { value: 1.0 },
+                    numChars: { value: fullAsciiSet.length },
+                    atlasSize: { value: 16.0 }
+                },
+                vertexShader: vertexShader,
+                fragmentShader: fragmentShader,
+                material: null,
+                fsQuad: null,
+                render: function(renderer, writeBuffer, readBuffer) {
+                    if (!this.material) {
+                        this.material = new THREE.ShaderMaterial({
+                            uniforms: this.uniforms,
+                            vertexShader: this.vertexShader,
+                            fragmentShader: this.fragmentShader
+                        });
+                        
+                        const geometry = new THREE.PlaneGeometry(2, 2);
+                        this.fsQuad = new THREE.Mesh(geometry, this.material);
+                        this.scene = new THREE.Scene();
+                        this.camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+                        this.scene.add(this.fsQuad);
+                    }
+
+                    this.uniforms.tDiffuse.value = readBuffer.texture;
+                    
+                    if (writeBuffer) {
+                        renderer.setRenderTarget(writeBuffer);
+                        renderer.clear();
+                        renderer.render(this.scene, this.camera);
+                    } else {
+                        renderer.setRenderTarget(null);
+                        renderer.render(this.scene, this.camera);
+                    }
+                }
+            };
+        }
+
+        // Add default geometry
+        function addDefaultGeometry() {
+            const geometry = new THREE.TorusKnotGeometry(1, 0.3, 100, 16);
+            const material = new THREE.MeshPhongMaterial({ 
+                color: 0xffffff,
+                shininess: 100
+            });
+            model = new THREE.Mesh(geometry, material);
+            scene.add(model);
+        }
+
+        // Setup event listeners
+        function setupEventListeners() {
+            // File input
+            document.getElementById('file-input').addEventListener('change', handleFileUpload);
+
+            // Controls
+            document.getElementById('char-size').addEventListener('input', (e) => {
+                asciiPass.uniforms.charSize.value = parseFloat(e.target.value);
+                document.getElementById('char-size-value').textContent = e.target.value;
+            });
+
+            document.getElementById('brightness').addEventListener('input', (e) => {
+                asciiPass.uniforms.brightness.value = parseFloat(e.target.value);
+                document.getElementById('brightness-value').textContent = e.target.value;
+            });
+
+            document.getElementById('contrast').addEventListener('input', (e) => {
+                asciiPass.uniforms.contrast.value = parseFloat(e.target.value);
+                document.getElementById('contrast-value').textContent = e.target.value;
+            });
+
+
+            document.getElementById('auto-rotate').addEventListener('change', (e) => {
+                autoRotate = e.target.checked;
+            });
+
+            // Rotation controls
+            document.getElementById('rotation-x').addEventListener('input', (e) => {
+                if (model) {
+                    const degrees = parseFloat(e.target.value);
+                    model.rotation.x = degrees * Math.PI / 180;
+                    document.getElementById('rotation-x-value').textContent = degrees;
+                }
+            });
+
+            document.getElementById('rotation-y').addEventListener('input', (e) => {
+                if (model) {
+                    const degrees = parseFloat(e.target.value);
+                    model.rotation.y = degrees * Math.PI / 180;
+                    document.getElementById('rotation-y-value').textContent = degrees;
+                }
+            });
+
+            document.getElementById('rotation-z').addEventListener('input', (e) => {
+                if (model) {
+                    const degrees = parseFloat(e.target.value);
+                    model.rotation.z = degrees * Math.PI / 180;
+                    document.getElementById('rotation-z-value').textContent = degrees;
+                }
+            });
+
+            // Window resize
+            window.addEventListener('resize', onWindowResize);
+            
+            // Model picker
+            document.querySelectorAll('.model-thumb').forEach(thumb => {
+                thumb.addEventListener('click', (e) => {
+                    const modelPath = e.target.dataset.model;
+                    loadModelFromPath(modelPath);
+                    
+                    // Update active state
+                    document.querySelectorAll('.model-thumb').forEach(t => t.classList.remove('active'));
+                    e.target.classList.add('active');
+                });
+            });
+        }
+
+        // Handle file upload
+        function handleFileUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const fileName = file.name.toLowerCase();
+            const reader = new FileReader();
+            
+            document.getElementById('loading').style.display = 'block';
+
+            reader.onload = function(e) {
+                const contents = e.target.result;
+                console.log('File loaded, size:', contents.byteLength || contents.length);
+                
+                // Remove existing model
+                if (model) {
+                    scene.remove(model);
+                    if (model.geometry) model.geometry.dispose();
+                    if (model.material) {
+                        if (Array.isArray(model.material)) {
+                            model.material.forEach(m => m.dispose());
+                        } else {
+                            model.material.dispose();
+                        }
+                    }
+                }
+
+                // Load based on file type
+                if (fileName.endsWith('.gltf') || fileName.endsWith('.glb')) {
+                    console.log('Loading GLTF/GLB file...');
+                    const loader = new GLTFLoader();
+                    loader.parse(contents, '', (gltf) => {
+                        console.log('GLTF loaded successfully:', gltf);
+                        model = gltf.scene;
+                        scene.add(model);
+                        centerModel();
+                        document.getElementById('loading').style.display = 'none';
+                    }, (error) => {
+                        console.error('Error loading GLTF:', error);
+                        document.getElementById('loading').style.display = 'none';
+                        alert('Error loading file: ' + error.message);
+                    });
+                } else if (fileName.endsWith('.obj')) {
+                    console.log('Loading OBJ file...');
+                    const loader = new OBJLoader();
+                    try {
+                        const obj = loader.parse(contents);
+                        model = obj;
+                        scene.add(model);
+                        
+                        // Add material to OBJ
+                        model.traverse((child) => {
+                            if (child.isMesh) {
+                                child.material = new THREE.MeshPhongMaterial({ 
+                                    color: 0xffffff,
+                                    shininess: 100
+                                });
+                            }
+                        });
+                        
+                        centerModel();
+                        document.getElementById('loading').style.display = 'none';
+                    } catch (error) {
+                        console.error('Error loading OBJ:', error);
+                        document.getElementById('loading').style.display = 'none';
+                        alert('Error loading file: ' + error.message);
+                    }
+                }
+            };
+
+            if (fileName.endsWith('.glb') || fileName.endsWith('.gltf')) {
+                reader.readAsArrayBuffer(file);
+            } else if (fileName.endsWith('.obj')) {
+                reader.readAsText(file);
+            }
+        }
+
+        // Center and scale model
+        function centerModel() {
+            const box = new THREE.Box3().setFromObject(model);
+            const center = box.getCenter(new THREE.Vector3());
+            const size = box.getSize(new THREE.Vector3());
+            
+            const maxDim = Math.max(size.x, size.y, size.z);
+            const scale = 2.5 / maxDim;
+            
+            model.scale.setScalar(scale);
+            model.position.sub(center.multiplyScalar(scale));
+            
+            // Reset rotation controls
+            model.rotation.set(0, 0, 0);
+            document.getElementById('rotation-x').value = 0;
+            document.getElementById('rotation-y').value = 0;
+            document.getElementById('rotation-z').value = 0;
+            document.getElementById('rotation-x-value').textContent = 0;
+            document.getElementById('rotation-y-value').textContent = 0;
+            document.getElementById('rotation-z-value').textContent = 0;
+            
+            // Adjust camera
+            camera.position.set(0, 0, 5);
+            controls.target.set(0, 0, 0);
+            controls.update();
+        }
+
+        // Window resize handler
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            asciiPass.uniforms.resolution.value.set(window.innerWidth, window.innerHeight);
+        }
+
+        // Load model from path
+        function loadModelFromPath(path) {
+            document.getElementById('loading').style.display = 'block';
+            
+            fetch(path)
+                .then(response => response.arrayBuffer())
+                .then(buffer => {
+                    // Remove existing model
+                    if (model) {
+                        scene.remove(model);
+                        if (model.geometry) model.geometry.dispose();
+                        if (model.material) {
+                            if (Array.isArray(model.material)) {
+                                model.material.forEach(m => m.dispose());
+                            } else {
+                                model.material.dispose();
+                            }
+                        }
+                    }
+                    
+                    const loader = new GLTFLoader();
+                    loader.parse(buffer, '', (gltf) => {
+                        console.log('Model loaded:', path);
+                        model = gltf.scene;
+                        scene.add(model);
+                        centerModel();
+                        document.getElementById('loading').style.display = 'none';
+                    }, (error) => {
+                        console.error('Error loading model:', error);
+                        document.getElementById('loading').style.display = 'none';
+                        alert('Error loading model: ' + error.message);
+                    });
+                })
+                .catch(error => {
+                    console.error('Error fetching model:', error);
+                    document.getElementById('loading').style.display = 'none';
+                    alert('Error loading model file');
+                });
+        }
+
+        // Animation loop
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            controls.update();
+            
+            // Auto rotation
+            if (autoRotate && model) {
+                model.rotation.y += 0.01;
+                // Update Y rotation slider when auto-rotating
+                const degrees = Math.round((model.rotation.y * 180 / Math.PI) % 360);
+                document.getElementById('rotation-y').value = degrees;
+                document.getElementById('rotation-y-value').textContent = degrees;
+            }
+            
+            // Render scene to render target with transparency
+            const renderTarget = new THREE.WebGLRenderTarget(window.innerWidth, window.innerHeight, {
+                format: THREE.RGBAFormat,
+                type: THREE.UnsignedByteType
+            });
+            renderer.setRenderTarget(renderTarget);
+            renderer.setClearAlpha(0);
+            renderer.clear();
+            renderer.render(scene, camera);
+            
+            // Apply ASCII effect
+            renderer.setRenderTarget(null);
+            renderer.setClearAlpha(0);
+            renderer.clear();
+            asciiPass.render(renderer, null, renderTarget);
+            
+            renderTarget.dispose();
+        }
+    </script>
 </body>
 </html>
