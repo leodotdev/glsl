@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D ASCII Shader Viewer</title>
+    <style>
+        body {
+            margin: 0;
+            font-family: monospace;
+            background: #000;
+            color: #0f0;
+            overflow: hidden;
+        }
+        #canvas {
+            display: block;
+        }
+        #controls {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 20px;
+            border: 1px solid #0f0;
+            border-radius: 5px;
+        }
+        #file-input {
+            margin-bottom: 10px;
+            display: block;
+        }
+        #controls label {
+            display: block;
+            margin-top: 10px;
+        }
+        #controls input[type="range"] {
+            width: 200px;
+            margin-top: 5px;
+        }
+        #controls span {
+            display: inline-block;
+            width: 50px;
+            text-align: right;
+        }
+        #loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 24px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="canvas"></canvas>
+    <div id="controls">
+        <input type="file" id="file-input" accept=".gltf,.glb,.obj">
+        <label>
+            Character Size: <span id="char-size-value">8</span>
+            <input type="range" id="char-size" min="4" max="20" value="8" step="1">
+        </label>
+        <label>
+            Brightness: <span id="brightness-value">1.0</span>
+            <input type="range" id="brightness" min="0.1" max="2.0" value="1.0" step="0.1">
+        </label>
+        <label>
+            Contrast: <span id="contrast-value">1.0</span>
+            <input type="range" id="contrast" min="0.5" max="3.0" value="1.0" step="0.1">
+        </label>
+        <label>
+            <input type="checkbox" id="auto-rotate" checked> Auto Rotate
+        </label>
+    </div>
+    <div id="loading">Loading...</div>
+
+    <script src="https://cdn.jsdelivr.net/npm/three@0.149.0/build/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.149.0/examples/js/loaders/GLTFLoader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.149.0/examples/js/loaders/OBJLoader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.149.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="app-standalone.js"></script>
+</body>
+</html>
