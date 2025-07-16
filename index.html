@@ -109,12 +109,12 @@
             <input type="range" id="char-size" min="6" max="24" value="10" step="1">
         </label>
         <label>
-            Brightness: <span id="brightness-value">1.5</span>
-            <input type="range" id="brightness" min="0.1" max="2.0" value="1.5" step="0.1">
+            Brightness: <span id="brightness-value">1.1</span>
+            <input type="range" id="brightness" min="0.1" max="2.0" value="1.1" step="0.1">
         </label>
         <label>
-            Contrast: <span id="contrast-value">1.0</span>
-            <input type="range" id="contrast" min="0.5" max="3.0" value="1.0" step="0.1">
+            Contrast: <span id="contrast-value">1.1</span>
+            <input type="range" id="contrast" min="0.5" max="3.0" value="1.1" step="0.1">
         </label>
         <label>
             <input type="checkbox" id="auto-rotate" checked> Auto Rotate
@@ -134,14 +134,7 @@
     </div>
     <div id="loading">Loading...</div>
     <div id="model-picker">
-        <div class="model-thumb" data-model="3d/book.glb">book</div>
-        <div class="model-thumb" data-model="3d/book2.glb">book2</div>
-        <div class="model-thumb" data-model="3d/cap2.glb">cap2</div>
-        <div class="model-thumb" data-model="3d/cat.glb">cat</div>
-        <div class="model-thumb" data-model="3d/dog.glb">dog</div>
-        <div class="model-thumb" data-model="3d/dog2.glb">dog2</div>
-        <div class="model-thumb" data-model="3d/mic.glb">mic</div>
-        <div class="model-thumb" data-model="3d/phone.glb">phone</div>
+        <!-- Models will be loaded dynamically -->
     </div>
 
     <script async src="https://unpkg.com/es-module-shims@1.6.3/dist/es-module-shims.js"></script>
@@ -180,8 +173,93 @@
         // Wait for font to load
         document.fonts.ready.then(() => {
             fontLoaded = true;
+            loadModelList();
             init();
         });
+
+        // Load model list dynamically
+        async function loadModelList() {
+            try {
+                // Fetch the directory listing (this works with most web servers)
+                const response = await fetch('/3d/');
+                const text = await response.text();
+                
+                // Parse the HTML to find .glb files
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(text, 'text/html');
+                const links = doc.querySelectorAll('a');
+                
+                const models = [];
+                links.forEach(link => {
+                    const href = link.getAttribute('href');
+                    if (href && href.endsWith('.glb')) {
+                        models.push(href);
+                    }
+                });
+                
+                // If parsing directory listing fails, use a predefined list
+                if (models.length === 0) {
+                    // Fallback to checking known model names
+                    const knownModels = ['book', 'book2', 'cap', 'cap2', 'cat', 'cat2', 'dog', 'dog2', 'mic', 'phone'];
+                    for (const modelName of knownModels) {
+                        try {
+                            const testResponse = await fetch(`/3d/${modelName}.glb`, { method: 'HEAD' });
+                            if (testResponse.ok) {
+                                models.push(`${modelName}.glb`);
+                            }
+                        } catch (e) {
+                            // Model doesn't exist, skip
+                        }
+                    }
+                }
+                
+                // Sort models alphabetically
+                models.sort();
+                
+                // Create model thumbnails
+                const modelPicker = document.getElementById('model-picker');
+                modelPicker.innerHTML = '';
+                
+                models.forEach(modelFile => {
+                    const modelName = modelFile.replace('.glb', '');
+                    const thumb = document.createElement('div');
+                    thumb.className = 'model-thumb';
+                    thumb.dataset.model = `3d/${modelFile}`;
+                    thumb.textContent = modelName;
+                    thumb.addEventListener('click', (e) => {
+                        const modelPath = e.target.dataset.model;
+                        loadModelFromPath(modelPath);
+                        
+                        // Update active state
+                        document.querySelectorAll('.model-thumb').forEach(t => t.classList.remove('active'));
+                        e.target.classList.add('active');
+                    });
+                    modelPicker.appendChild(thumb);
+                });
+            } catch (error) {
+                console.error('Error loading model list:', error);
+                // Fallback to a basic set if directory listing fails
+                const fallbackModels = ['book', 'cat', 'dog', 'mic', 'phone'];
+                const modelPicker = document.getElementById('model-picker');
+                modelPicker.innerHTML = '';
+                
+                fallbackModels.forEach(modelName => {
+                    const thumb = document.createElement('div');
+                    thumb.className = 'model-thumb';
+                    thumb.dataset.model = `3d/${modelName}.glb`;
+                    thumb.textContent = modelName;
+                    thumb.addEventListener('click', (e) => {
+                        const modelPath = e.target.dataset.model;
+                        loadModelFromPath(modelPath);
+                        
+                        // Update active state
+                        document.querySelectorAll('.model-thumb').forEach(t => t.classList.remove('active'));
+                        e.target.classList.add('active');
+                    });
+                    modelPicker.appendChild(thumb);
+                });
+            }
+        }
 
         // Create ASCII texture atlas
         function createAsciiTexture(charSet = fullAsciiSet) {
@@ -343,8 +421,8 @@
                     tAscii: { value: asciiTexture },
                     resolution: { value: new THREE.Vector2(window.innerWidth, window.innerHeight) },
                     charSize: { value: 10.0 },
-                    brightness: { value: 1.5 },
-                    contrast: { value: 1.0 },
+                    brightness: { value: 1.1 },
+                    contrast: { value: 1.1 },
                     numChars: { value: fullAsciiSet.length },
                     atlasSize: { value: 16.0 }
                 },
@@ -445,18 +523,6 @@
 
             // Window resize
             window.addEventListener('resize', onWindowResize);
-            
-            // Model picker
-            document.querySelectorAll('.model-thumb').forEach(thumb => {
-                thumb.addEventListener('click', (e) => {
-                    const modelPath = e.target.dataset.model;
-                    loadModelFromPath(modelPath);
-                    
-                    // Update active state
-                    document.querySelectorAll('.model-thumb').forEach(t => t.classList.remove('active'));
-                    e.target.classList.add('active');
-                });
-            });
         }
 
         // Handle file upload
