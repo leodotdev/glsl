@@ -685,7 +685,7 @@
             
             // Auto rotation
             if (autoRotate && model) {
-                model.rotation.y += 0.003; // Slowed down from 0.01 to 0.003
+                model.rotation.y += 0.02; // Increased speed for faster rotation
                 // Update Y rotation slider when auto-rotating
                 const degrees = Math.round((model.rotation.y * 180 / Math.PI) % 360);
                 document.getElementById('rotation-y').value = degrees;
