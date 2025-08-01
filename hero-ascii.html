@@ -82,10 +82,17 @@
         let asciiPass;
         let fontLoaded = false;
 
-        // ASCII character set
-        let fullAsciiSet = " `'.·:;,_-~^\"!|/\\()[]{}+<>=*?¿•○●#$%&@";
-        fullAsciiSet += "¡¦†‡§¶¤¢£¥™®©÷×±¬";
-        fullAsciiSet += "ilI7TYJj1089";
+        // ASCII character set - line characters distributed throughout for higher frequency
+        let fullAsciiSet = " .,-/\\|";  // Light with lines
+        fullAsciiSet += "~:;=!";  // Light-medium
+        fullAsciiSet += "/\\|";  // More lines
+        fullAsciiSet += "*#$";  // Medium
+        fullAsciiSet += "/\\|";  // Even more lines
+        fullAsciiSet += "?%@";  // Medium-heavy
+        fullAsciiSet += "|/\\";  // Lines again
+        fullAsciiSet += "()[]{}+<>";  // Heavy
+        fullAsciiSet += "'`^\"_";  // Accents
+        fullAsciiSet += "░▒▓█";  // Blocks
 
         let asciiTexture = null;
 
