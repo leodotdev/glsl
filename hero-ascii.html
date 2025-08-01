@@ -76,12 +76,13 @@
     <script type="module">
         import * as THREE from 'three';
         import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
         let scene, camera, renderer;
-        let model, controls;
+        let model;
         let asciiPass;
         let fontLoaded = false;
+        let mouseX = 0, mouseY = 0;
+        let targetRotationX = 0, targetRotationY = 0;
 
         // ASCII character set - line characters distributed throughout for higher frequency
         let fullAsciiSet = " .,-/\\|";  // Light with lines
@@ -105,9 +106,9 @@
             baseCharSize: 10,
             brightness: 1.1,
             contrast: 1.1,
-            enableOrbitControls: true, // Set to false to disable user interaction
             baseCameraDistance: 5,
-            baseScale: 5.0
+            baseScale: 5.0,
+            hoverSensitivity: 0.5
         };
 
         // Wait for font to load
@@ -193,13 +194,9 @@
             directionalLight.position.set(5, 5, 5);
             scene.add(directionalLight);
 
-            // Controls (optional)
-            if (config.enableOrbitControls) {
-                controls = new OrbitControls(camera, renderer.domElement);
-                controls.enableDamping = true;
-                controls.dampingFactor = 0.05;
-                controls.enableZoom = false; // Disable zoom for hero section
-            }
+            // Add hover interaction
+            document.addEventListener('mousemove', onMouseMove);
+            document.addEventListener('touchmove', onTouchMove);
 
             // Create ASCII texture
             asciiTexture = createAsciiTexture(fullAsciiSet);
@@ -208,8 +205,8 @@
             createAsciiEffect();
             
             // Set initial responsive character size
-            const minDimension = Math.min(window.innerWidth, window.innerHeight);
-            const responsiveCharSize = Math.max(6, Math.min(20, (minDimension / 100) * 1.2));
+            const scaleFactor = Math.min(window.innerWidth / 1200, window.innerHeight / 800);
+            const responsiveCharSize = Math.max(6, Math.min(20, config.baseCharSize * scaleFactor));
             asciiPass.uniforms.charSize.value = responsiveCharSize;
 
             // Load the model
@@ -363,19 +360,30 @@
             const viewportHeight = window.innerHeight;
             const minDimension = Math.min(viewportWidth, viewportHeight);
             
-            // Scale factor that responds to screen size
-            const responsiveScale = (minDimension / 1000) * config.baseScale;
+            // Scale factor that responds to screen size (better formula)
+            const scaleFactor = Math.min(viewportWidth / 1200, viewportHeight / 800);
+            const responsiveScale = config.baseScale * scaleFactor;
             const scale = responsiveScale / maxDim;
             
             model.scale.setScalar(scale);
             model.position.sub(center.multiplyScalar(scale));
             
             // Responsive camera distance
-            const cameraDistance = (minDimension / 1000) * config.baseCameraDistance;
+            const cameraDistance = config.baseCameraDistance * scaleFactor;
             camera.position.set(0, 0, cameraDistance);
-            if (controls) {
-                controls.target.set(0, 0, 0);
-                controls.update();
+            camera.lookAt(0, 0, 0);
+        }
+
+        // Mouse/touch handlers
+        function onMouseMove(event) {
+            mouseX = (event.clientX / window.innerWidth) * 2 - 1;
+            mouseY = -(event.clientY / window.innerHeight) * 2 + 1;
+        }
+        
+        function onTouchMove(event) {
+            if (event.touches.length > 0) {
+                mouseX = (event.touches[0].clientX / window.innerWidth) * 2 - 1;
+                mouseY = -(event.touches[0].clientY / window.innerHeight) * 2 + 1;
             }
         }
 
@@ -393,8 +401,8 @@
             }
             
             // Update character size based on viewport
-            const minDimension = Math.min(container.clientWidth, container.clientHeight);
-            const responsiveCharSize = Math.max(6, Math.min(20, (minDimension / 100) * 1.2));
+            const scaleFactor = Math.min(container.clientWidth / 1200, container.clientHeight / 800);
+            const responsiveCharSize = Math.max(6, Math.min(20, config.baseCharSize * scaleFactor));
             asciiPass.uniforms.charSize.value = responsiveCharSize;
         }
 
@@ -402,13 +410,20 @@
         function animate() {
             requestAnimationFrame(animate);
             
-            if (controls) {
-                controls.update();
-            }
-            
-            // Auto rotation
-            if (config.autoRotate && model) {
-                model.rotation.y += config.rotationSpeed;
+            // Hover-based rotation
+            if (model) {
+                // Calculate target rotation based on mouse position
+                targetRotationY = mouseX * Math.PI * config.hoverSensitivity;
+                targetRotationX = mouseY * Math.PI * 0.5 * config.hoverSensitivity;
+                
+                // Smooth rotation lerp
+                model.rotation.y += (targetRotationY - model.rotation.y) * 0.05;
+                model.rotation.x += (targetRotationX - model.rotation.x) * 0.05;
+                
+                // Add auto rotation on top of hover
+                if (config.autoRotate) {
+                    model.rotation.y += config.rotationSpeed;
+                }
             }
             
             // Render scene to render target
