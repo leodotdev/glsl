@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>ASCII Hero</title>
     <style>
         @font-face {
@@ -16,6 +16,7 @@
             margin: 0;
             font-family: 'PPSupplyMono', monospace;
             overflow: hidden;
+            touch-action: none; /* Disable all touch gestures */
         }
         
         #ascii-hero {
@@ -205,6 +206,11 @@
 
             // Create ASCII post-processing effect
             createAsciiEffect();
+            
+            // Set initial responsive character size
+            const minDimension = Math.min(window.innerWidth, window.innerHeight);
+            const responsiveCharSize = Math.max(6, Math.min(20, (minDimension / 100) * 1.2));
+            asciiPass.uniforms.charSize.value = responsiveCharSize;
 
             // Load the model
             loadModel();
