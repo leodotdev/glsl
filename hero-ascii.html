@@ -101,11 +101,12 @@
             modelPath: '3d/untitled-12.glb',
             autoRotate: true,
             rotationSpeed: 0.01,
-            charSize: 10,
+            baseCharSize: 10,
             brightness: 1.1,
             contrast: 1.1,
             enableOrbitControls: true, // Set to false to disable user interaction
-            cameraDistance: 5
+            baseCameraDistance: 5,
+            baseScale: 5.0
         };
 
         // Wait for font to load
@@ -172,7 +173,7 @@
                 0.1, 
                 1000
             );
-            camera.position.set(0, 0, config.cameraDistance);
+            camera.position.set(0, 0, config.baseCameraDistance);
 
             // Renderer setup
             renderer = new THREE.WebGLRenderer({ 
@@ -286,7 +287,7 @@
                     tDiffuse: { value: null },
                     tAscii: { value: asciiTexture },
                     resolution: { value: new THREE.Vector2(window.innerWidth, window.innerHeight) },
-                    charSize: { value: config.charSize },
+                    charSize: { value: config.baseCharSize },
                     brightness: { value: config.brightness },
                     contrast: { value: config.contrast },
                     numChars: { value: fullAsciiSet.length },
@@ -351,13 +352,21 @@
             const size = box.getSize(new THREE.Vector3());
             
             const maxDim = Math.max(size.x, size.y, size.z);
-            const scale = 5.0 / maxDim;
+            // Responsive scaling based on viewport
+            const viewportWidth = window.innerWidth;
+            const viewportHeight = window.innerHeight;
+            const minDimension = Math.min(viewportWidth, viewportHeight);
+            
+            // Scale factor that responds to screen size
+            const responsiveScale = (minDimension / 1000) * config.baseScale;
+            const scale = responsiveScale / maxDim;
             
             model.scale.setScalar(scale);
             model.position.sub(center.multiplyScalar(scale));
             
-            // Adjust camera if needed
-            camera.position.set(0, 0, config.cameraDistance);
+            // Responsive camera distance
+            const cameraDistance = (minDimension / 1000) * config.baseCameraDistance;
+            camera.position.set(0, 0, cameraDistance);
             if (controls) {
                 controls.target.set(0, 0, 0);
                 controls.update();
@@ -371,6 +380,16 @@
             camera.updateProjectionMatrix();
             renderer.setSize(container.clientWidth, container.clientHeight);
             asciiPass.uniforms.resolution.value.set(container.clientWidth, container.clientHeight);
+            
+            // Re-center and scale model on resize
+            if (model) {
+                centerModel();
+            }
+            
+            // Update character size based on viewport
+            const minDimension = Math.min(container.clientWidth, container.clientHeight);
+            const responsiveCharSize = Math.max(6, Math.min(20, (minDimension / 100) * 1.2));
+            asciiPass.uniforms.charSize.value = responsiveCharSize;
         }
 
         // Animation loop
